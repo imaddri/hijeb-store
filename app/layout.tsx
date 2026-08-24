@@ -8,6 +8,9 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "أزياء مرام ",
   description: "لوحة تحكم متجر الأزياء المحتشمة",
+  verification: {
+    google: "TqIHkXnaRDrpYE53cOdo7uggSDE_EK_qjYytoAmGH8Q",
+  },
    icons: {
     icon: "/icons/log.svg",
   },
