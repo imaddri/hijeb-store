@@ -1,7 +1,40 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  devIndicators: false,
+
+  // ======================================================
+  // ALLOWED DEV ORIGINS
+  // يسمح للهاتف بالوصول إلى موارد Next.js أثناء التطوير
+  // ======================================================
+
+  allowedDevOrigins: [
+    "192.168.1.70",
+  ],
+
+  // ======================================================
+  // IMAGES
+  // ======================================================
+
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "res.cloudinary.com",
+        pathname: "/**",
+      },
+    ],
+  },
+
+  // ======================================================
+  // EXPERIMENTAL
+  // ======================================================
+
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "10mb",
+    },
+  },
 };
 
 export default nextConfig;
