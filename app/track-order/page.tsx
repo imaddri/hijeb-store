@@ -241,7 +241,7 @@ function OrderCard({
         </div> 
  
         <StatusBadge 
-          status={order.status} 
+          status={order.status}
         /> 
  
       </div> 
@@ -697,7 +697,7 @@ export default function TrackOrderPage() {
         dir="rtl" 
         className=" 
           min-h-screen 
-          bg-[#faf9f6] 
+          bg-[#f3eadc]
           px-4 
           pt-2 
           pb-12 

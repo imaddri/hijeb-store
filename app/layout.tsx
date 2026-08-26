@@ -12,7 +12,7 @@ export const metadata: Metadata = {
     google: "TqIHkXnaRDrpYE53cOdo7uggSDE_EK_qjYytoAmGH8Q",
   },
    icons: {
-    icon: "/icons/log.svg",
+    icon: "/icons/log11.svg",
   },
 };
 

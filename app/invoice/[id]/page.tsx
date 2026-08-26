@@ -146,7 +146,7 @@ export default async function InvoicePage({
                   "
                 >
                   <Image
-                    src="/icons/log.svg"
+                    src="/icons/log11.svg"
                     alt="BOUTIQUE MARAM"
                     width={100}
                     height={100}

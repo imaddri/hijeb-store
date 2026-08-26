@@ -142,7 +142,7 @@ export default async function Home() {
       {/* ==================== HERO =========================== */}
       {/* ===================================================== */}
 
-      <section className="bg-[#faf9f7]">
+      <section className="bg-[#dfd1bd] px-6 pb-24">
 
         <div className="mx-auto grid min-h-[calc(100vh-80px)] max-w-7xl items-center gap-12 px-6 py-8 sm:py-10 lg:grid-cols-2 lg:gap-16 lg:py-10">
 
@@ -338,7 +338,7 @@ export default async function Home() {
 
       <section
         id="categories"
-        className="border-t border-black/10 bg-white py-20"
+        className="border-t border-black/10 bg-[#dfd1bd] py-20"
       >
 
         <div className="mx-auto max-w-7xl px-6">

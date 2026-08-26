@@ -60,6 +60,8 @@ const NUMBER_SIZES = [
   "52",
   "54",
   "56",
+  "58",
+  "60",
 ];
 
 const ALLOWED_IMAGE_TYPES = [

@@ -189,7 +189,7 @@ export default async function ProductPage({
   // ==========================================================
 
   return (
-    <main className="bg-[#faf9f7]">
+    <main className="bg-[#f3eadc] px-6 pb-24">
 
       {/* ==================================================== */}
       {/* PRODUCT */}

@@ -161,7 +161,7 @@ export default function AdminLoginPage() {
             "
           >
             <Image
-              src="/icons/log.svg"
+              src="/icons/log11.svg"
               alt="Boutique Maram"
               width={80}
               height={80}

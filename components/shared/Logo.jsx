@@ -22,14 +22,14 @@ export default function Logo() {
         "
       >
         <Image
-          src="/icons/log.svg"
+          src="/icons/log11.svg"
           alt="BOUTIQUE MARAM"
-          width={120}
-          height={120}
+          width={200}
+          height={200}
           priority
           className="
-            h-[150px]
-            w-[150px]
+            h-[200px]
+            w-[200px]
             object-contain
           "
         />
