@@ -1,9 +1,13 @@
 "use client";
 
 import { useRef, useState } from "react";
+
 import algeria from "@/data/algeria.json";
+
 import { useCart } from "@/context/CartContext";
+
 import { createOrder } from "@/actions/order.actions";
+
 import { useRouter } from "next/navigation";
 
 type AlgeriaData = {
@@ -19,15 +23,105 @@ type AlgeriaData = {
 
 const data = algeria as AlgeriaData[];
 
-export default function OrderForm() {
+// ======================================================
+// SHIPPING PRICES
+// ======================================================
+//
+// أسعار التوصيل حسب الولاية.
+// يمكنك تعديل الأسعار لاحقًا من هنا.
+//
+// ======================================================
+
+const SHIPPING_PRICES: Record<string, number> = {
+  "01": 600,
+  "02": 400,
+  "03": 400,
+  "04": 400,
+  "05": 400,
+  "06": 400,
+  "07": 400,
+  "08": 600,
+  "09": 400,
+  "10": 400,
+  "11": 700,
+  "12": 400,
+  "13": 400,
+  "14": 400,
+  "15": 400,
+  "16": 400,
+  "17": 400,
+  "18": 400,
+  "19": 400,
+  "20": 500,
+  "21": 400,
+  "22": 400,
+  "23": 400,
+  "24": 400,
+  "25": 400,
+  "26": 400,
+  "27": 400,
+  "28": 400,
+  "29": 400,
+  "30": 400,
+  "31": 400,
+  "32": 600,
+  "33": 750,
+  "34": 400,
+  "35": 400,
+  "36": 400,
+  "37": 750,
+  "38": 600,
+  "39": 300,
+  "40": 400,
+  "41": 400,
+  "42": 400,
+  "43": 400,
+  "44": 400,
+  "45": 600,
+  "46": 400,
+  "47": 400,
+  "48": 400,
+  "49": 600,
+  "50": 700,
+  "51": 400,
+  "52": 800,
+  "53": 750,
+  "54": 750,
+  "55": 400,
+  "56": 750,
+  "57": 400,
+  "58": 600,
+};
+
+// ======================================================
+// HOME DELIVERY SURCHARGE
+// ======================================================
+
+const HOME_DELIVERY_SURCHARGE = 200;
+
+type DeliveryType = "OFFICE" | "HOME";
+
+type OrderFormProps = {
+  selectedWilaya: string;
+  setSelectedWilaya: (value: string) => void;
+  deliveryType: DeliveryType;
+  setDeliveryType: (value: DeliveryType) => void;
+};
+
+export default function OrderForm({
+  selectedWilaya,
+  setSelectedWilaya,
+  deliveryType,
+  setDeliveryType,
+}: OrderFormProps) {
   const router = useRouter();
 
   const { cart, clearCart } = useCart();
 
-  const [selectedWilaya, setSelectedWilaya] = useState("");
   const [selectedCommune, setSelectedCommune] = useState("");
 
   const [loading, setLoading] = useState(false);
+
   const [error, setError] = useState("");
 
   // ======================================================
@@ -68,6 +162,19 @@ export default function OrderForm() {
     );
 
   // ======================================================
+  // SHIPPING PRICE
+  // ======================================================
+
+  const baseShippingCost =
+    SHIPPING_PRICES[selectedWilaya] ?? 0;
+
+  const shippingCost =
+    baseShippingCost +
+    (deliveryType === "HOME"
+      ? HOME_DELIVERY_SURCHARGE
+      : 0);
+
+  // ======================================================
   // WILAYA CHANGE
   // ======================================================
 
@@ -77,6 +184,7 @@ export default function OrderForm() {
     const wilayaCode = event.target.value;
 
     setSelectedWilaya(wilayaCode);
+
     setSelectedCommune("");
   }
 
@@ -108,6 +216,40 @@ export default function OrderForm() {
     if (cart.length === 0) {
       setError(
         "السلة فارغة. أضف منتجًا واحدًا على الأقل قبل تأكيد الطلب."
+      );
+
+      submittingRef.current = false;
+
+      return;
+    }
+
+    // ====================================================
+    // SHIPPING PRICE
+    // ====================================================
+
+    if (
+      !selectedWilaya ||
+      !SHIPPING_PRICES[selectedWilaya]
+    ) {
+      setError(
+        "يرجى اختيار ولاية صالحة لحساب سعر التوصيل."
+      );
+
+      submittingRef.current = false;
+
+      return;
+    }
+
+    // ====================================================
+    // DELIVERY TYPE
+    // ====================================================
+
+    if (
+      deliveryType !== "OFFICE" &&
+      deliveryType !== "HOME"
+    ) {
+      setError(
+        "يرجى اختيار طريقة التوصيل."
       );
 
       submittingRef.current = false;
@@ -149,7 +291,7 @@ export default function OrderForm() {
         commune: selectedCommune,
         address,
         notes,
-
+        deliveryType,
         items: cart.map((item) => ({
           id: item.id,
           variantId: item.variantId ?? null,
@@ -177,6 +319,7 @@ export default function OrderForm() {
       clearCart();
 
       // نرسل رقم الطلب القصير بدل الـ cuid الطويل
+
       router.push(
         `/order/success?orderNumber=${result.orderNumber}`
       );
@@ -194,6 +337,7 @@ export default function OrderForm() {
 
       // السماح بمحاولة جديدة إذا فشل الطلب
       // عند نجاح الطلب سيتم الانتقال إلى صفحة النجاح
+
       submittingRef.current = false;
     }
   }
@@ -408,6 +552,173 @@ export default function OrderForm() {
       </div>
 
       {/* ================================================= */}
+      {/* DELIVERY TYPE */}
+      {/* ================================================= */}
+
+      <div>
+        <label className="mb-3 block text-sm font-medium text-[#1f1f1f]">
+          طريقة التوصيل
+        </label>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+
+          {/* OFFICE DELIVERY */}
+
+          <button
+            type="button"
+            onClick={() =>
+              setDeliveryType("OFFICE")
+            }
+            disabled={loading}
+            className={`
+              rounded-2xl
+              border
+              px-4
+              py-4
+              text-right
+              transition
+              disabled:cursor-not-allowed
+              ${
+                deliveryType === "OFFICE"
+                  ? "border-[#a3834d] bg-[#f8f5ef] ring-1 ring-[#a3834d]/20"
+                  : "border-black/10 bg-white hover:border-[#a3834d]/40"
+              }
+            `}
+          >
+            <div className="flex items-center justify-between gap-3">
+
+              <div>
+                <p className="font-semibold text-[#1f1f1f]">
+                  التوصيل إلى المكتب
+                </p>
+
+                <p className="mt-1 text-xs text-black/45">
+                  استلام الطلب من مكتب التوصيل
+                </p>
+              </div>
+
+              <div
+                className={`
+                  flex
+                  h-5
+                  w-5
+                  shrink-0
+                  items-center
+                  justify-center
+                  rounded-full
+                  border
+                  ${
+                    deliveryType === "OFFICE"
+                      ? "border-[#a3834d] bg-[#a3834d]"
+                      : "border-black/20 bg-white"
+                  }
+                `}
+              >
+                {deliveryType === "OFFICE" && (
+                  <div className="h-2 w-2 rounded-full bg-white" />
+                )}
+              </div>
+
+            </div>
+          </button>
+
+          {/* HOME DELIVERY */}
+
+          <button
+            type="button"
+            onClick={() =>
+              setDeliveryType("HOME")
+            }
+            disabled={loading}
+            className={`
+              rounded-2xl
+              border
+              px-4
+              py-4
+              text-right
+              transition
+              disabled:cursor-not-allowed
+              ${
+                deliveryType === "HOME"
+                  ? "border-[#a3834d] bg-[#f8f5ef] ring-1 ring-[#a3834d]/20"
+                  : "border-black/10 bg-white hover:border-[#a3834d]/40"
+              }
+            `}
+          >
+            <div className="flex items-center justify-between gap-3">
+
+              <div>
+                <p className="font-semibold text-[#1f1f1f]">
+                  التوصيل إلى المنزل
+                </p>
+
+                <p className="mt-1 text-xs text-[#a3834d]">
+                  +200 دج
+                </p>
+              </div>
+
+              <div
+                className={`
+                  flex
+                  h-5
+                  w-5
+                  shrink-0
+                  items-center
+                  justify-center
+                  rounded-full
+                  border
+                  ${
+                    deliveryType === "HOME"
+                      ? "border-[#a3834d] bg-[#a3834d]"
+                      : "border-black/20 bg-white"
+                  }
+                `}
+              >
+                {deliveryType === "HOME" && (
+                  <div className="h-2 w-2 rounded-full bg-white" />
+                )}
+              </div>
+
+            </div>
+          </button>
+
+        </div>
+      </div>
+
+      {/* ================================================= */}
+      {/* SHIPPING PRICE */}
+      {/* ================================================= */}
+
+      {selectedWilaya && (
+        <div className="rounded-2xl border border-[#a3834d]/20 bg-[#f8f5ef] px-4 py-4">
+          <div className="flex items-center justify-between gap-4">
+            <span className="text-sm text-black/50">
+              سعر التوصيل
+            </span>
+
+            <span className="font-semibold text-[#a3834d]">
+              {shippingCost.toLocaleString(
+                "ar-DZ"
+              )}{" "}
+              دج
+            </span>
+          </div>
+
+          {deliveryType === "HOME" && (
+            <div className="mt-2 flex items-center justify-between gap-4 text-xs">
+              <span className="text-black/40">
+                رسوم التوصيل إلى المنزل
+              </span>
+
+              <span className="font-medium text-black/50">
+                +200 دج
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ================================================= */}
       {/* ADDRESS */}
       {/* ================================================= */}
 
@@ -424,7 +735,7 @@ export default function OrderForm() {
           name="address"
           rows={4}
           placeholder="أدخل عنوان التوصيل بالتفصيل"
-          required
+          
           disabled={loading}
           className="
             w-full

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useCart } from "@/context/CartContext";
 
 type ProductVariant = {
@@ -131,6 +131,45 @@ export default function ProductActions({
     useState<string | null>(
       availableSizes[0] ?? null
     );
+
+  // ==========================================================
+  // SIZE GUIDE
+  // ==========================================================
+
+  const [showSizeGuide, setShowSizeGuide] =
+    useState(false);
+
+  const sizeGuideRef =
+    useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    function handleClickOutside(
+      event: MouseEvent
+    ) {
+      if (
+        sizeGuideRef.current &&
+        !sizeGuideRef.current.contains(
+          event.target as Node
+        )
+      ) {
+        setShowSizeGuide(false);
+      }
+    }
+
+    if (showSizeGuide) {
+      document.addEventListener(
+        "mousedown",
+        handleClickOutside
+      );
+    }
+
+    return () => {
+      document.removeEventListener(
+        "mousedown",
+        handleClickOutside
+      );
+    };
+  }, [showSizeGuide]);
 
   // ==========================================================
   // QUANTITY
@@ -464,7 +503,9 @@ export default function ProductActions({
             dir="rtl"
           >
 
-            <div className="flex items-center justify-between">
+            <div
+              className="flex items-center justify-between"
+            >
 
               <h3 className="text-base font-semibold text-[#1f1f1f]">
                 المقاس
@@ -472,12 +513,137 @@ export default function ProductActions({
 
               <button
                 type="button"
-                className="text-sm text-[#a3834d] underline underline-offset-4"
+                onClick={() =>
+                  setShowSizeGuide(
+                    (current) => !current
+                  )
+                }
+                className="shrink-0 rounded-xl border border-[#a3834d]/30 bg-[#f8f5ef] px-4 py-2.5 text-sm font-medium text-[#8b7350] transition hover:border-[#a3834d] hover:bg-[#a3834d] hover:text-white"
               >
-                دليل المقاسات
+                اعرفي قياسك
+                <span>▼</span>
               </button>
 
             </div>
+
+            {/* ==================================================== */}
+            {/* SIZE GUIDE */}
+            {/* ==================================================== */}
+
+            {showSizeGuide && (
+              <div
+                ref={sizeGuideRef}
+                className="mt-4 w-full max-w-full overflow-hidden rounded-2xl border border-[#a3834d]/20 bg-[#f8f4ed]"
+              >
+
+                <div className="border-b border-[#a3834d]/15 px-4 py-3">
+
+                  <p className="text-sm font-semibold text-[#1f1f1f]">
+                    اعرفي قياسك
+                  </p>
+
+                  <p className="mt-1 text-xs text-black/50">
+                    اختاري المقاس الأقرب إلى طولك
+                  </p>
+
+                </div>
+
+                <div className="w-full overflow-x-auto">
+
+                  <table
+                    className="w-full min-w-0 table-fixed text-sm"
+                    dir="rtl"
+                  >
+
+                    <thead>
+
+                      <tr className="border-b border-black/10 text-[#1f1f1f]">
+
+                        <th className="w-1/3 px-2 py-3 text-center font-semibold sm:px-4">
+                          الطول
+                        </th>
+
+                        <th className="w-1/3 px-2 py-3 text-center font-semibold sm:px-4">
+                          مقاس العباية
+                        </th>
+
+
+                      </tr>
+
+                    </thead>
+
+                    <tbody>
+
+                      
+
+                      
+
+                      <tr className="border-b border-black/5">
+
+                        <td className="px-2 py-3 text-center text-black/65 sm:px-4">
+                          158 – 160 سم
+                        </td>
+
+                        <td className="px-2 py-3 text-center font-semibold text-[#a3834d] sm:px-4">
+                          54
+                        </td>
+
+                        
+
+                      </tr>
+
+                      <tr className="border-b border-black/5">
+
+                        <td className="px-2 py-3 text-center text-black/65 sm:px-4">
+                          161 – 164 سم
+                        </td>
+
+                        <td className="px-2 py-3 text-center font-semibold text-[#a3834d] sm:px-4">
+                          56
+                        </td>
+
+                        
+
+                      </tr>
+
+                      <tr className="border-b border-black/5">
+
+                        <td className="px-2 py-3 text-center text-black/65 sm:px-4">
+                          165 – 168 سم
+                        </td>
+
+                        <td className="px-2 py-3 text-center font-semibold text-[#a3834d] sm:px-4">
+                          58
+                        </td>
+
+                        
+
+                      </tr>
+
+                      <tr className="border-b border-black/5">
+
+                        <td className="px-2 py-3 text-center text-black/65 sm:px-4">
+                          169 – 175 سم
+                        </td>
+
+                        <td className="px-2 py-3 text-center font-semibold text-[#a3834d] sm:px-4">
+                          60
+                        </td>
+
+                        
+                      </tr>
+
+                      
+
+                      
+                    </tbody>
+
+                  </table>
+
+                </div>
+
+              </div>
+            )}
 
             <div className="mt-4 flex flex-wrap gap-3">
 

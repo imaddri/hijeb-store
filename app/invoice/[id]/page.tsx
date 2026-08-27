@@ -16,6 +16,139 @@ type Props = {
 };
 
 // ======================================================
+// SHIPPING PRICES
+// ======================================================
+//
+// نفس أسعار التوصيل الموجودة في order.actions.ts
+//
+// ======================================================
+
+const SHIPPING_PRICES: Record<string, number> = {
+  "01": 600,
+  "02": 400,
+  "03": 400,
+  "04": 400,
+  "05": 400,
+  "06": 400,
+  "07": 400,
+  "08": 600,
+  "09": 400,
+  "10": 400,
+  "11": 700,
+  "12": 400,
+  "13": 400,
+  "14": 400,
+  "15": 400,
+  "16": 400,
+  "17": 400,
+  "18": 400,
+  "19": 400,
+  "20": 500,
+  "21": 400,
+  "22": 400,
+  "23": 400,
+  "24": 400,
+  "25": 400,
+  "26": 400,
+  "27": 400,
+  "28": 400,
+  "29": 400,
+  "30": 400,
+  "31": 400,
+  "32": 600,
+  "33": 750,
+  "34": 400,
+  "35": 400,
+  "36": 400,
+  "37": 750,
+  "38": 600,
+  "39": 600,
+  "40": 400,
+  "41": 400,
+  "42": 400,
+  "43": 400,
+  "44": 400,
+  "45": 600,
+  "46": 400,
+  "47": 400,
+  "48": 400,
+  "49": 600,
+  "50": 700,
+  "51": 400,
+  "52": 800,
+  "53": 750,
+  "54": 750,
+  "55": 400,
+  "56": 750,
+  "57": 400,
+  "58": 600,
+};
+
+// ======================================================
+// HOME DELIVERY SURCHARGE
+// ======================================================
+
+const HOME_DELIVERY_SURCHARGE = 200;
+
+// ======================================================
+// GET DELIVERY TYPE
+// ======================================================
+//
+// لا نحتاج إلى deliveryType داخل Prisma.
+// نستنتج النوع من سعر التوصيل المحفوظ في الطلب.
+//
+// OFFICE:
+// سعر الولاية الأساسي.
+//
+// HOME:
+// سعر الولاية الأساسي + 200 دج.
+//
+// ======================================================
+
+function getDeliveryType(
+  wilaya: string,
+  shippingCost: number
+) {
+  const baseShippingCost =
+    SHIPPING_PRICES[wilaya?.trim()];
+
+  if (
+    baseShippingCost === undefined
+  ) {
+    return {
+      type: "UNKNOWN",
+      label: "غير محدد",
+    };
+  }
+
+  if (
+    shippingCost ===
+    baseShippingCost +
+      HOME_DELIVERY_SURCHARGE
+  ) {
+    return {
+      type: "HOME",
+      label: "التوصيل إلى المنزل",
+    };
+  }
+
+  if (
+    shippingCost ===
+    baseShippingCost
+  ) {
+    return {
+      type: "OFFICE",
+      label: "التوصيل إلى المكتب",
+    };
+  }
+
+  return {
+    type: "UNKNOWN",
+    label: "غير محدد",
+  };
+}
+
+// ======================================================
 // FORMAT PRICE
 // ======================================================
 
@@ -79,6 +212,16 @@ export default async function InvoicePage({
   } catch {
     notFound();
   }
+
+  // ====================================================
+  // DELIVERY TYPE
+  // ====================================================
+
+  const deliveryType =
+    getDeliveryType(
+      order.customer.wilaya,
+      order.shippingCost
+    );
 
   return (
     <div
@@ -179,7 +322,7 @@ export default async function InvoicePage({
 
               <div className="mt-6 space-y-1 text-sm leading-6 text-zinc-500 print:mt-3 print:text-xs print:leading-5">
                 <p>متجر الأزياء والحجابات النسائية</p>
-                <p>الجزائر</p>
+                <p>الوادي-الجزائر</p>
               </div>
 
             </div>
@@ -269,6 +412,8 @@ export default async function InvoicePage({
 
             <div className="space-y-3 text-sm print:space-y-1.5 print:text-xs">
 
+              {/* STATUS */}
+
               <div className="flex items-center justify-between">
 
                 <span className="text-zinc-500">
@@ -280,6 +425,38 @@ export default async function InvoicePage({
                 </span>
 
               </div>
+
+              {/* DELIVERY TYPE */}
+
+              <div className="flex items-center justify-between">
+
+                <span className="text-zinc-500">
+                  نوع التوصيل
+                </span>
+
+                <span
+                  className={`rounded-full px-3 py-1 text-xs font-bold print:px-2 print:py-0.5 print:text-[10px] ${
+                    deliveryType.type ===
+                    "HOME"
+                      ? "bg-blue-100 text-blue-700"
+                      : deliveryType.type ===
+                        "OFFICE"
+                      ? "bg-[#f3eadc] text-[#8a6b3d]"
+                      : "bg-zinc-100 text-zinc-500"
+                  }`}
+                >
+                  {deliveryType.type ===
+                    "HOME" && " "}
+
+                  {deliveryType.type ===
+                    "OFFICE" && " "}
+
+                  {deliveryType.label}
+                </span>
+
+              </div>
+
+              {/* PRODUCTS COUNT */}
 
               <div className="flex items-center justify-between">
 
@@ -293,6 +470,8 @@ export default async function InvoicePage({
 
               </div>
 
+              {/* ORDER DATE */}
+
               <div className="flex items-center justify-between">
 
                 <span className="text-zinc-500">
@@ -300,9 +479,14 @@ export default async function InvoicePage({
                 </span>
 
                 <span className="font-semibold text-zinc-900">
-                  {new Intl.DateTimeFormat("ar-DZ", {
-                    dateStyle: "medium",
-                  }).format(order.createdAt)}
+                  {new Intl.DateTimeFormat(
+                    "ar-DZ",
+                    {
+                      dateStyle: "medium",
+                    }
+                  ).format(
+                    order.createdAt
+                  )}
                 </span>
 
               </div>
@@ -408,7 +592,8 @@ export default async function InvoicePage({
                                   className="text-zinc-700"
                                 >
                                   {
-                                    item.product
+                                    item
+                                      .product
                                       .productCode
                                   }
                                 </b>
@@ -448,7 +633,10 @@ export default async function InvoicePage({
                         </span>
 
                         <span className="font-semibold text-zinc-800">
-                          {formatPrice(item.price)} ×{" "}
+                          {formatPrice(
+                            item.price
+                          )}{" "}
+                          ×{" "}
                           {item.quantity}
                         </span>
 
@@ -459,7 +647,10 @@ export default async function InvoicePage({
                     {/* PRICE */}
 
                     <div className="hidden text-center text-sm font-semibold text-zinc-700 sm:block print:text-xs">
-                      {formatPrice(item.price)} دج
+                      {formatPrice(
+                        item.price
+                      )}{" "}
+                      دج
                     </div>
 
                     {/* QUANTITY */}
@@ -477,7 +668,10 @@ export default async function InvoicePage({
                       </span>
 
                       <p className="mt-1 text-lg font-black text-[#a3834d] sm:mt-0 print:text-sm">
-                        {formatPrice(itemTotal)} دج
+                        {formatPrice(
+                          itemTotal
+                        )}{" "}
+                        دج
                       </p>
 
                     </div>
@@ -500,14 +694,59 @@ export default async function InvoicePage({
 
           <div className="ml-auto max-w-md rounded-2xl bg-[#faf7f0] p-6 print:rounded-xl print:p-3.5">
 
-            <div className="flex items-center justify-between rounded-xl bg-zinc-950 px-5 py-4 print:px-4 print:py-2.5">
+            {/* ================================================= */}
+            {/* SUBTOTAL */}
+            {/* ================================================= */}
+
+            <div className="flex items-center justify-between border-b border-[#e5dccb] pb-3 print:pb-2">
+
+              <span className="text-sm font-semibold text-zinc-600 print:text-xs">
+                الإجمالي قبل التوصيل
+              </span>
+
+              <span className="text-base font-black text-zinc-900 print:text-sm">
+                {formatPrice(
+                  order.subtotal
+                )}{" "}
+                دج
+              </span>
+
+            </div>
+
+            {/* ================================================= */}
+            {/* SHIPPING */}
+            {/* ================================================= */}
+
+            <div className="flex items-center justify-between border-b border-[#e5dccb] py-3 print:py-2">
+
+              <span className="text-sm font-semibold text-zinc-600 print:text-xs">
+                سعر التوصيل
+              </span>
+
+              <span className="text-base font-black text-zinc-900 print:text-sm">
+                {formatPrice(
+                  order.shippingCost
+                )}{" "}
+                دج
+              </span>
+
+            </div>
+
+            {/* ================================================= */}
+            {/* FINAL TOTAL */}
+            {/* ================================================= */}
+
+            <div className="mt-3 flex items-center justify-between rounded-xl bg-zinc-950 px-5 py-4 print:mt-2 print:px-4 print:py-2.5">
 
               <span className="font-bold text-white print:text-sm">
                 الإجمالي النهائي
               </span>
 
               <span className="text-xl font-black text-[#d6b77a] print:text-lg">
-                {formatPrice(order.total)} دج
+                {formatPrice(
+                  order.total
+                )}{" "}
+                دج
               </span>
 
             </div>
@@ -520,7 +759,8 @@ export default async function InvoicePage({
         {/* NOTES */}
         {/* ================================================= */}
 
-        {(order.notes || order.customer.notes) && (
+        {(order.notes ||
+          order.customer.notes) && (
           <div className="mx-7 mb-8 rounded-2xl border border-amber-200 bg-amber-50 p-5 sm:mx-10 print:mx-7 print:mb-3 print:rounded-xl print:p-3">
 
             <p className="text-sm font-black text-amber-900 print:text-xs">

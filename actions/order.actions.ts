@@ -1,7 +1,86 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+
 import { revalidatePath } from "next/cache";
+
+// ======================================================
+// SHIPPING PRICES
+// ======================================================
+//
+// أسعار التوصيل حسب الولاية.
+//
+// هذه هي المصدر الحقيقي الذي يعتمد عليه السيرفر.
+// يمكنك تعديل الأسعار لاحقًا من هنا.
+//
+// ======================================================
+
+const SHIPPING_PRICES: Record<string, number> = {
+  "01": 600,
+  "02": 400,
+  "03": 400,
+  "04": 400,
+  "05": 400,
+  "06": 400,
+  "07": 400,
+  "08": 600,
+  "09": 400,
+  "10": 400,
+  "11": 700,
+  "12": 400,
+  "13": 400,
+  "14": 400,
+  "15": 400,
+  "16": 400,
+  "17": 400,
+  "18": 400,
+  "19": 400,
+  "20": 500,
+  "21": 400,
+  "22": 400,
+  "23": 400,
+  "24": 400,
+  "25": 400,
+  "26": 400,
+  "27": 400,
+  "28": 400,
+  "29": 400,
+  "30": 400,
+  "31": 400,
+  "32": 600,
+  "33": 750,
+  "34": 400,
+  "35": 400,
+  "36": 400,
+  "37": 750,
+  "38": 600,
+  "39": 300,
+  "40": 400,
+  "41": 400,
+  "42": 400,
+  "43": 400,
+  "44": 400,
+  "45": 600,
+  "46": 400,
+  "47": 400,
+  "48": 400,
+  "49": 600,
+  "50": 700,
+  "51": 400,
+  "52": 800,
+  "53": 750,
+  "54": 750,
+  "55": 400,
+  "56": 750,
+  "57": 400,
+  "58": 600,
+};
+
+// ======================================================
+// HOME DELIVERY SURCHARGE
+// ======================================================
+
+const HOME_DELIVERY_SURCHARGE = 200;
 
 // ======================================================
 // TYPES
@@ -18,8 +97,9 @@ export type CreateOrderInput = {
   phone: string;
   wilaya: string;
   commune: string;
-  address: string;
+  address?: string;
   notes?: string;
+  deliveryType: "OFFICE" | "HOME";
   items: CreateOrderItemInput[];
 };
 
@@ -51,17 +131,19 @@ async function syncProductStock(
   tx: any,
   productId: string
 ) {
-  const result = await tx.productVariant.aggregate({
-    where: {
-      productId,
-    },
+  const result =
+    await tx.productVariant.aggregate({
+      where: {
+        productId,
+      },
 
-    _sum: {
-      stock: true,
-    },
-  });
+      _sum: {
+        stock: true,
+      },
+    });
 
-  const totalStock = result._sum.stock ?? 0;
+  const totalStock =
+    result._sum.stock ?? 0;
 
   await tx.product.update({
     where: {
@@ -111,32 +193,34 @@ async function reserveVariantStock(
     throw new Error("الكمية غير صحيحة.");
   }
 
-  const updated = await tx.productVariant.updateMany({
-    where: {
-      id: variantId,
-
-      stock: {
-        gte: quantity,
-      },
-    },
-
-    data: {
-      stock: {
-        decrement: quantity,
-      },
-    },
-  });
-
-  if (updated.count === 0) {
-    const current = await tx.productVariant.findUnique({
+  const updated =
+    await tx.productVariant.updateMany({
       where: {
         id: variantId,
+
+        stock: {
+          gte: quantity,
+        },
       },
 
-      select: {
-        stock: true,
+      data: {
+        stock: {
+          decrement: quantity,
+        },
       },
     });
+
+  if (updated.count === 0) {
+    const current =
+      await tx.productVariant.findUnique({
+        where: {
+          id: variantId,
+        },
+
+        select: {
+          stock: true,
+        },
+      });
 
     throw new Error(
       `الكمية المطلوبة غير متوفرة. المتاح حاليًا: ${
@@ -191,32 +275,34 @@ async function reserveProductStock(
     throw new Error("الكمية غير صحيحة.");
   }
 
-  const updated = await tx.product.updateMany({
-    where: {
-      id: productId,
-
-      stock: {
-        gte: quantity,
-      },
-    },
-
-    data: {
-      stock: {
-        decrement: quantity,
-      },
-    },
-  });
-
-  if (updated.count === 0) {
-    const current = await tx.product.findUnique({
+  const updated =
+    await tx.product.updateMany({
       where: {
         id: productId,
+
+        stock: {
+          gte: quantity,
+        },
       },
 
-      select: {
-        stock: true,
+      data: {
+        stock: {
+          decrement: quantity,
+        },
       },
     });
+
+  if (updated.count === 0) {
+    const current =
+      await tx.product.findUnique({
+        where: {
+          id: productId,
+        },
+
+        select: {
+          stock: true,
+        },
+      });
 
     throw new Error(
       `الكمية المطلوبة غير متوفرة. المتاح حاليًا: ${
@@ -275,15 +361,16 @@ async function restoreOrderItemStock(
     return;
   }
 
-  const product = await tx.product.findUnique({
-    where: {
-      id: item.productId,
-    },
+  const product =
+    await tx.product.findUnique({
+      where: {
+        id: item.productId,
+      },
 
-    include: {
-      variants: true,
-    },
-  });
+      include: {
+        variants: true,
+      },
+    });
 
   if (!product) {
     throw new Error(
@@ -292,12 +379,13 @@ async function restoreOrderItemStock(
   }
 
   if (product.variants.length > 0) {
-    const variant = await findVariantBySelection(
-      tx,
-      item.productId,
-      item.color,
-      item.size
-    );
+    const variant =
+      await findVariantBySelection(
+        tx,
+        item.productId,
+        item.color,
+        item.size
+      );
 
     if (!variant) {
       throw new Error(
@@ -362,10 +450,17 @@ export async function createOrder(
       };
     }
 
-    if (!input.address?.trim()) {
+    // ==================================================
+    // DELIVERY TYPE
+    // ==================================================
+
+    if (
+      input.deliveryType !== "OFFICE" &&
+      input.deliveryType !== "HOME"
+    ) {
       return {
         success: false,
-        error: "يرجى إدخال العنوان.",
+        error: "يرجى اختيار طريقة التوصيل.",
       };
     }
 
@@ -378,6 +473,29 @@ export async function createOrder(
         error: "السلة فارغة.",
       };
     }
+
+    // ==================================================
+    // SHIPPING PRICE
+    // ==================================================
+
+    const baseShippingCost =
+      SHIPPING_PRICES[input.wilaya.trim()];
+
+    if (
+      baseShippingCost === undefined
+    ) {
+      return {
+        success: false,
+        error:
+          "لا يوجد سعر توصيل محدد لهذه الولاية.",
+      };
+    }
+
+    const shippingCost =
+      baseShippingCost +
+      (input.deliveryType === "HOME"
+        ? HOME_DELIVERY_SURCHARGE
+        : 0);
 
     const normalizedPhone =
       normalizePhone(input.phone);
@@ -445,7 +563,7 @@ export async function createOrder(
             }
 
             const variantId =
-              cartItem.variantId?.trim() ||
+              cartItem.variantId?.trim() ??
               null;
 
             let selectedVariant = null;
@@ -541,13 +659,23 @@ export async function createOrder(
                   input.commune.trim(),
 
                 address:
-                  input.address.trim(),
+                  input.address?.trim() ||
+                  "",
 
                 notes:
                   input.notes?.trim() ||
                   null,
               },
             });
+
+          const discount = 0;
+
+          const total =
+            calculateTotal(
+              subtotal,
+              shippingCost,
+              discount
+            );
 
           const order =
             await tx.order.create({
@@ -559,11 +687,11 @@ export async function createOrder(
 
                 subtotal,
 
-                shippingCost: 0,
+                shippingCost,
 
-                discount: 0,
+                discount,
 
-                total: subtotal,
+                total,
 
                 notes:
                   input.notes?.trim() ||
@@ -1054,14 +1182,16 @@ export async function updateOrderItem(
           let newVariant = null;
 
           const requestedVariantId =
-            input.variantId?.trim() ||
+            input.variantId?.trim() ??
             null;
 
           if (
             newProduct.variants
               .length > 0
           ) {
-            if (!requestedVariantId) {
+            if (
+              !requestedVariantId
+            ) {
               throw new Error(
                 `يرجى اختيار النسخة المطلوبة من المنتج "${newProduct.name}".`
               );
@@ -1080,7 +1210,9 @@ export async function updateOrderItem(
               );
             }
           } else {
-            if (requestedVariantId) {
+            if (
+              requestedVariantId
+            ) {
               throw new Error(
                 "المنتج المحدد لا يحتوي على تنويعات."
               );
@@ -1291,7 +1423,6 @@ export async function updateOrderItem(
 
     return {
       success: true,
-
       item: result,
     };
   } catch (error) {
@@ -1518,6 +1649,10 @@ export async function updateOrderCustomer(
         where: {
           id: input.orderId,
         },
+
+        include: {
+          customer: true,
+        },
       });
 
     if (!order) {
@@ -1550,6 +1685,67 @@ export async function updateOrderCustomer(
         notes:
           input.notes?.trim() ||
           null,
+      },
+    });
+
+    // ==================================================
+    // UPDATE SHIPPING COST
+    // ==================================================
+    //
+    // عند تغيير الولاية من لوحة الإدارة،
+    // نعيد حساب سعر التوصيل والإجمالي.
+    //
+    // إذا كان الطلب القديم يحتوي على زيادة 200 دج،
+    // فهذا يعني أنه كان توصيلًا إلى المنزل،
+    // لذلك نحافظ على زيادة 200 دج.
+    //
+    // ==================================================
+
+    const baseShippingCost =
+      SHIPPING_PRICES[
+        input.wilaya.trim()
+      ];
+
+    if (
+      baseShippingCost === undefined
+    ) {
+      throw new Error(
+        "لا يوجد سعر توصيل محدد لهذه الولاية."
+      );
+    }
+
+    const oldBaseShippingCost =
+      SHIPPING_PRICES[
+        order.customer?.wilaya?.trim() ?? ""
+      ];
+
+    const wasHomeDelivery =
+      oldBaseShippingCost !== undefined &&
+      order.shippingCost ===
+        oldBaseShippingCost +
+          HOME_DELIVERY_SURCHARGE;
+
+    const shippingCost =
+      baseShippingCost +
+      (wasHomeDelivery
+        ? HOME_DELIVERY_SURCHARGE
+        : 0);
+
+    const total =
+      calculateTotal(
+        order.subtotal,
+        shippingCost,
+        order.discount
+      );
+
+    await prisma.order.update({
+      where: {
+        id: input.orderId,
+      },
+
+      data: {
+        shippingCost,
+        total,
       },
     });
 
@@ -1679,6 +1875,7 @@ export async function deleteOrder(
 // لا يوجد أي تعديل على Prisma.
 //
 // تُرجع الدالة:
+//
 // - totalSales
 // - deliveredOrders
 // - totalOrders
@@ -1771,7 +1968,8 @@ export async function getSalesSummary() {
 
   const averageOrderValue =
     deliveredCount > 0
-      ? totalSales / deliveredCount
+      ? totalSales /
+        deliveredCount
       : 0;
 
   // ====================================================
@@ -1793,29 +1991,37 @@ export async function getSalesSummary() {
     "ديسمبر",
   ];
 
-  const monthlySales = months.map(
-    (month) => ({
-      month,
-      orders: 0,
-      sales: 0,
-    })
-  );
+  const monthlySales =
+    months.map(
+      (month) => ({
+        month,
+        orders: 0,
+        sales: 0,
+      })
+    );
 
-  for (const order of deliveredOrders) {
+  for (
+    const order of deliveredOrders
+  ) {
     const monthIndex =
       order.createdAt.getMonth();
 
-    monthlySales[monthIndex].orders += 1;
+    monthlySales[
+      monthIndex
+    ].orders += 1;
 
-    monthlySales[monthIndex].sales +=
-      order.total;
+    monthlySales[
+      monthIndex
+    ].sales += order.total;
   }
 
   // ====================================================
   // RECENT SALES
   // ====================================================
+
   //
   // هنا نرجع الطلب نفسه مع:
+  //
   // - رقم الطلب
   // - اسم العميل
   // - السعر الإجمالي
@@ -1823,33 +2029,35 @@ export async function getSalesSummary() {
   // - المنتجات
   //
   // حتى تستطيع SettingsPage عرض:
+  //
   // الطلب #123
   // العميل: أحمد
   // السعر: 5,000 دج
   //
   // ====================================================
 
-  const recentSales = recentOrders.map(
-    (order) => ({
-      id: order.id,
+  const recentSales =
+    recentOrders.map(
+      (order) => ({
+        id: order.id,
 
-      orderNumber:
-        order.orderNumber,
+        orderNumber:
+          order.orderNumber,
 
-      customerName:
-        order.customer?.name ??
-        "عميل غير معروف",
+        customerName:
+          order.customer?.name ??
+          "عميل غير معروف",
 
-      total:
-        order.total,
+        total:
+          order.total,
 
-      createdAt:
-        order.createdAt,
+        createdAt:
+          order.createdAt,
 
-      items:
-        order.items,
-    })
-  );
+        items:
+          order.items,
+      })
+    );
 
   return {
     totalSales,
@@ -1962,6 +2170,7 @@ export async function getRecentOrders(
 // ======================================================
 //
 // نحسب المنتجات الأكثر مبيعًا اعتمادًا على DELIVERED فقط.
+//
 // ======================================================
 
 export async function getTopSellingProducts(
@@ -2075,22 +2284,28 @@ export async function getMonthlySales() {
     "ديسمبر",
   ];
 
-  const data = months.map(
-    (month) => ({
-      month,
-      orders: 0,
-      sales: 0,
-    })
-  );
+  const data =
+    months.map(
+      (month) => ({
+        month,
+        orders: 0,
+        sales: 0,
+      })
+    );
 
-  for (const order of orders) {
+  for (
+    const order of orders
+  ) {
     const monthIndex =
       order.createdAt.getMonth();
 
-    data[monthIndex].orders += 1;
+    data[
+      monthIndex
+    ].orders += 1;
 
-    data[monthIndex].sales +=
-      order.total;
+    data[
+      monthIndex
+    ].sales += order.total;
   }
 
   return data;
