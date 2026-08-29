@@ -1659,7 +1659,7 @@ lg:py-6
     "
                   >
                     <Image
-                      src="/hero/gl.jfif"
+                      src="/hero/gl2.svg"
                       alt="تشكيلة أزياء فاخرة من تركيا والأردن ودبي"
                       width={600}
                       height={600}
@@ -1913,7 +1913,7 @@ lg:py-6
                     "
                   >
                     <Image
-                      src="/hero/images (2).jfif"
+                      src="/hero/gl4.svg"
                       alt="أقمشة درجة أولى أصلية"
                       width={600}
                       height={600}
@@ -2215,7 +2215,7 @@ lg:py-6
                         "
                       >
                         <Image
-                          src="/hero/images.jfif"
+                          src="/hero/gl5.svg"
                           alt="عبايات"
                           fill
                           className="
