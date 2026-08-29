@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -13,7 +14,11 @@ type Category = {
   name: string;
 };
 
-type SizeType = "NONE" | "LETTER" | "NUMBER";
+type SizeType =
+  | "NONE"
+  | "LETTER"
+  | "NUMBER"
+  | "COMBINED";
 
 type Variant = {
   id: string;
@@ -62,6 +67,19 @@ const NUMBER_SIZES = [
   "56",
   "58",
   "60",
+];
+
+const COMBINED_SIZES = [
+  "38/40/42-1",
+  "44/46/48-2",
+  "50/52/54-3",
+  "1",
+  "2",
+  "3",
+  "4",
+  "5",
+  "6",
+  
 ];
 
 const ALLOWED_IMAGE_TYPES = [
@@ -623,8 +641,23 @@ export default function ProductForm({
       JSON.stringify(
         variants.map(
           (variant) => ({
+            /*
+             * IMPORTANT:
+             * The server currently accepts only:
+             * NONE / LETTER / NUMBER
+             *
+             * COMBINED remains available in the UI,
+             * but is sent as NUMBER to the server.
+             *
+             * The actual combined size value remains
+             * inside `size`, for example:
+             * 38/40/42-1
+             */
             sizeType:
-              variant.sizeType,
+              variant.sizeType ===
+              "COMBINED"
+                ? "NUMBER"
+                : variant.sizeType,
 
             size:
               variant.sizeType ===
@@ -902,7 +935,7 @@ export default function ProductForm({
             نوع القياس
           </label>
 
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-4">
             {/* NONE */}
 
             <button
@@ -977,6 +1010,31 @@ export default function ProductForm({
                 36 / 38 / 40 / 42
               </p>
             </button>
+
+            {/* COMBINED */}
+
+            <button
+              type="button"
+              onClick={() =>
+                handleSizeTypeChange(
+                  "COMBINED",
+                )
+              }
+              className={`rounded-2xl border p-4 text-right transition ${
+                sizeType ===
+                "COMBINED"
+                  ? "border-emerald-500 bg-emerald-50 ring-2 ring-emerald-500/10"
+                  : "border-zinc-200 bg-white hover:border-emerald-300"
+              }`}
+            >
+              <p className="font-bold text-zinc-900">
+                قياسات مركبة
+              </p>
+
+              <p className="mt-1 text-xs text-zinc-500">
+                44/46/48
+              </p>
+            </button>
           </div>
         </div>
 
@@ -1032,6 +1090,47 @@ export default function ProductForm({
 
             <div className="flex flex-wrap gap-3">
               {NUMBER_SIZES.map(
+                (size) => {
+                  const selected =
+                    selectedSizes.includes(
+                      size,
+                    );
+
+                  return (
+                    <button
+                      key={size}
+                      type="button"
+                      onClick={() =>
+                        toggleSize(
+                          size,
+                        )
+                      }
+                      className={`min-w-16 rounded-xl border px-5 py-3 text-sm font-bold transition ${
+                        selected
+                          ? "border-emerald-600 bg-emerald-600 text-white"
+                          : "border-zinc-200 bg-white text-zinc-700 hover:border-emerald-400"
+                      }`}
+                    >
+                      {size}
+                    </button>
+                  );
+                },
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* COMBINED SIZES */}
+
+        {sizeType ===
+          "COMBINED" && (
+          <div className="mt-6">
+            <label className="mb-3 block text-sm font-bold text-zinc-800">
+              اختر القياسات
+            </label>
+
+            <div className="flex flex-wrap gap-3">
+              {COMBINED_SIZES.map(
                 (size) => {
                   const selected =
                     selectedSizes.includes(

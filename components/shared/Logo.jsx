@@ -1,9 +1,20 @@
+
 import Image from "next/image";
 import Link from "next/link";
+import { Playfair_Display } from "next/font/google";
+
+const playfair = Playfair_Display({
+  subsets: ["latin"],
+  weight: ["500", "600", "700"],
+  display: "swap",
+});
 
 export default function Logo() {
   return (
-    <Link href="/" className="flex min-w-0 items-center gap-2 sm:gap-4">
+    <Link
+      href="/"
+      className="flex min-w-0 items-center gap-2 sm:gap-4"
+    >
 
       {/* ==================== LOGO ICON ==================== */}
 
@@ -41,23 +52,29 @@ export default function Logo() {
       <div>
 
         <h1
-          className="
-            text-sm sm:text-xl
-            font-bold
-            tracking-[0.08em] sm:tracking-[0.15em]
+          className={`
+            ${playfair.className}
+            text-sm
+            font-extrabold
+            tracking-[0.08em]
             text-[#1f1f1f]
-          "
+            sm:text-xl
+            sm:tracking-[0.15em]
+          `}
         >
           BOUTIQUE MARAM
         </h1>
 
+
         <p
-          className="
-            mt-1
-            text-xs
-            tracking-[0.18em] sm:tracking-[0.35em]
-            text-[#a3834d]
-          "
+          className={`
+            ${playfair.className}
+             mt-1
+    text-xs
+    font-medium
+    tracking-[0.18em] sm:tracking-[0.35em]
+    text-[#8f713f]
+          `}
         >
           MODEST ELEGANCE
         </p>

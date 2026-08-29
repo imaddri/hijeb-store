@@ -1,3 +1,4 @@
+
 @import "tailwindcss";
 
 :root {
@@ -100,5 +101,80 @@ body {
 
   to {
     transform: scaleX(0);
+  }
+}
+
+
+
+
+
+
+@keyframes marquee {
+  0% {
+    transform: translateX(0);
+  }
+
+  100% {
+    transform: translateX(-33.333%);
+  }
+}
+
+
+/* ======================================================
+   PREMIUM PRICE CARD - SOFT GOLDEN WAVE
+   ====================================================== */
+
+@keyframes priceWave {
+  0% {
+    transform: translateX(-120%) skewX(-18deg);
+    opacity: 0;
+  }
+
+  15% {
+    opacity: 0.35;
+  }
+
+  50% {
+    opacity: 0.65;
+  }
+
+  85% {
+    opacity: 0.35;
+  }
+
+  100% {
+    transform: translateX(120%) skewX(-18deg);
+    opacity: 0;
+  }
+}
+
+
+/* ======================================================
+   PREMIUM PRICE CARD - SOFT GLOW
+   ====================================================== */
+
+@keyframes priceGlow {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+
+  50% {
+    opacity: 0.7;
+  }
+}
+
+
+/* ======================================================
+   ACCESSIBILITY
+   ====================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
   }
 }

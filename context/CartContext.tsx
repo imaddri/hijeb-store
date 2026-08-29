@@ -1,3 +1,4 @@
+
 "use client";
 
 import {
@@ -38,6 +39,10 @@ type CartContextType = {
   cart: CartItem[];
 
   addToCart: (
+    item: CartItem
+  ) => void;
+
+  buyNow: (
     item: CartItem
   ) => void;
 
@@ -134,6 +139,14 @@ export function CartProvider({
             variantId:
               item.variantId ??
               null,
+
+            // Old items may not have a valid quantity
+            quantity:
+              typeof item.quantity ===
+                "number" &&
+              item.quantity > 0
+                ? item.quantity
+                : 1,
           })
         );
 
@@ -263,6 +276,151 @@ export function CartProvider({
   }
 
   // ==========================================================
+  // BUY NOW
+  // ==========================================================
+
+  /*
+    الشراء المباشر مختلف عن إضافة المنتج إلى السلة.
+
+    addToCart():
+    ----------------------------------------------------------
+    يسمح بتجميع الكميات لنفس المنتج/الخيار.
+
+    buyNow():
+    ----------------------------------------------------------
+    يقوم باستبدال أي نسخة سابقة من نفس المنتج
+    بالاختيار الحالي.
+
+    القاعدة:
+
+    إذا كان هناك أي منتج سابق يحمل نفس product.id
+    فإنه يتم حذفه أولًا، مهما كان:
+
+    - اللون مختلف
+    - المقاس مختلف
+    - variantId مختلف
+    - الكمية مختلفة
+
+    ثم يتم وضع الاختيار الجديد.
+
+    ==========================================================
+
+    مثال:
+
+    العملية الأولى:
+    ----------------------------------------------------------
+    المنتج A
+    اللون: أسود
+    المقاس: L
+    الكمية: 2
+
+    ثم الرجوع واختيار:
+
+    اللون: بني
+    المقاس: M
+    الكمية: 5
+
+    والضغط على "اطلب الآن":
+
+    النتيجة:
+    ----------------------------------------------------------
+    المنتج A
+    اللون: بني
+    المقاس: M
+    الكمية: 5
+
+    ولن تصبح:
+
+    أسود L = 2
+    +
+    بني M = 5
+
+    بل سيتم استبدال الاختيار السابق بالكامل.
+
+    ==========================================================
+
+    وإذا كان في السلة منتجات أخرى مختلفة أصلًا:
+
+    منتج A
+    منتج B
+
+    ثم ضغط المستخدم "اطلب الآن" على منتج A:
+
+    سيتم حذف نسخة منتج A السابقة فقط،
+    ويبقى منتج B كما هو.
+
+    ==========================================================
+
+    مهم:
+
+    buyNow لا يفرض quantity = 1.
+
+    بل يحافظ على الكمية التي أرسلها ProductActions.
+
+    مثال:
+
+    quantity = 1
+    => يبقى 1
+
+    quantity = 2
+    => يصبح 2
+
+    quantity = 5
+    => يصبح 5
+
+    وهكذا.
+  */
+
+  function buyNow(
+    item: CartItem
+  ) {
+
+    setCart(
+      (currentCart) => {
+
+        // ----------------------------------------------------
+        // Remove ALL previous versions of this product.
+        //
+        // We compare ONLY by product id.
+        //
+        // This is intentional:
+        // different color/size/variant should NOT create
+        // another product when using "Buy Now".
+        // ----------------------------------------------------
+
+        const cartWithoutSameProduct =
+          currentCart.filter(
+            (cartItem) =>
+              cartItem.id !== item.id
+          );
+
+        // ----------------------------------------------------
+        // Add the newly selected product.
+        //
+        // IMPORTANT:
+        // Keep the quantity selected by the user.
+        //
+        // DO NOT force quantity to 1.
+        // ----------------------------------------------------
+
+        const safeQuantity =
+          Math.max(
+            1,
+            Number(item.quantity) || 1
+          );
+
+        return [
+          ...cartWithoutSameProduct,
+          {
+            ...item,
+            quantity: safeQuantity,
+          },
+        ];
+      }
+    );
+  }
+
+  // ==========================================================
   // REMOVE
   // ==========================================================
 
@@ -374,6 +532,8 @@ export function CartProvider({
         cart,
 
         addToCart,
+
+        buyNow,
 
         removeFromCart,
 

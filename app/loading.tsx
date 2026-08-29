@@ -5,10 +5,10 @@ export default function Loading() {
     <div className="flex min-h-screen items-center justify-center bg-white">
       <div className="flex flex-col items-center gap-4">
         <Image
-          src="/icons/log.svg"
+          src="/icons/log11.svg"
           alt="Hijab Store"
-          width={180}
-          height={180}
+          width={200}
+          height={200}
           className="animate-pulse rounded-full"
         />
 

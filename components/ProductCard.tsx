@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -14,6 +15,12 @@ type ProductCardProps = {
       name: string;
     };
     badge?: string | null;
+
+    // =====================================================
+    // STOCK
+    // =====================================================
+
+    isOutOfStock?: boolean;
   };
 };
 
@@ -31,6 +38,9 @@ export default function ProductCard({
           100
       )
     : null;
+
+  const isOutOfStock =
+    product.isOutOfStock === true;
 
   return (
     <article
@@ -69,21 +79,25 @@ export default function ProductCard({
             src={product.image}
             alt={product.name}
             loading="lazy"
-            className="
+            className={`
               h-full
               w-full
               object-cover
-              transition-transform
+              transition-all
               duration-700
               ease-out
-              group-hover:scale-[1.045]
-            "
+              ${
+                isOutOfStock
+                  ? "grayscale-[35%] opacity-75"
+                  : "group-hover:scale-[1.045]"
+              }
+            `}
           />
 
           {/* IMAGE OVERLAY */}
 
           <div
-            className="
+            className={`
               pointer-events-none
               absolute
               inset-0
@@ -91,11 +105,58 @@ export default function ProductCard({
               from-black/[0.18]
               via-transparent
               to-black/[0.03]
-              opacity-70
-            "
+              transition-opacity
+              duration-500
+              ${
+                isOutOfStock
+                  ? "opacity-80"
+                  : "opacity-70"
+              }
+            `}
           />
 
+          {/* ================================================= */}
+          {/* OUT OF STOCK */}
+          {/* ================================================= */}
+
+          {isOutOfStock && (
+            <div
+              className="
+                absolute
+                inset-0
+                z-20
+                flex
+                items-center
+                justify-center
+                bg-black/20
+              "
+            >
+              <span
+                className="
+                  rounded-full
+                  border
+                  border-white/30
+                  bg-black/75
+                  px-5
+                  py-3
+                  text-[12px]
+                  font-bold
+                  text-white
+                  shadow-[0_8px_25px_rgba(0,0,0,0.25)]
+                  backdrop-blur-md
+                  sm:px-6
+                  sm:py-3.5
+                  sm:text-[14px]
+                "
+              >
+                غير متوفر حاليًا
+              </span>
+            </div>
+          )}
+
+          {/* ================================================= */}
           {/* DISCOUNT / BADGE */}
+          {/* ================================================= */}
 
           {hasDiscount && discountPercent ? (
             <span
@@ -103,6 +164,7 @@ export default function ProductCard({
                 absolute
                 left-2
                 top-2
+                z-30
                 rounded-full
                 bg-[#1f1f1f]
                 px-2
@@ -127,6 +189,7 @@ export default function ProductCard({
                 absolute
                 left-2
                 top-2
+                z-30
                 rounded-full
                 bg-[#1f1f1f]
                 px-2
@@ -147,7 +210,9 @@ export default function ProductCard({
             </span>
           ) : null}
 
+          {/* ================================================= */}
           {/* FAVORITE BUTTON */}
+          {/* ================================================= */}
 
           <button
             type="button"
@@ -160,6 +225,7 @@ export default function ProductCard({
               absolute
               right-2
               top-2
+              z-30
               flex
               h-8
               w-8
@@ -188,34 +254,39 @@ export default function ProductCard({
             ♡
           </button>
 
+          {/* ================================================= */}
           {/* QUICK VIEW HINT */}
+          {/* ================================================= */}
 
-          <div
-            className="
-              pointer-events-none
-              absolute
-              bottom-4
-              left-1/2
-              hidden
-              -translate-x-1/2
-              rounded-full
-              bg-white/90
-              px-4
-              py-2
-              text-[11px]
-              font-medium
-              text-[#1f1f1f]
-              opacity-0
-              shadow-lg
-              backdrop-blur-md
-              transition-all
-              duration-300
-              group-hover:opacity-100
-              sm:block
-            "
-          >
-            عرض المنتج
-          </div>
+          {!isOutOfStock && (
+            <div
+              className="
+                pointer-events-none
+                absolute
+                bottom-4
+                left-1/2
+                z-30
+                hidden
+                -translate-x-1/2
+                rounded-full
+                bg-white/90
+                px-4
+                py-2
+                text-[11px]
+                font-medium
+                text-[#1f1f1f]
+                opacity-0
+                shadow-lg
+                backdrop-blur-md
+                transition-all
+                duration-300
+                group-hover:opacity-100
+                sm:block
+              "
+            >
+              عرض المنتج
+            </div>
+          )}
         </div>
       </Link>
 
@@ -273,11 +344,9 @@ export default function ProductCard({
             mt-3
             flex
             min-w-0
-            items-end
-            justify-between
-            gap-2
+            flex-col
+            gap-3
             sm:mt-4
-            sm:gap-3
           "
         >
 
@@ -315,34 +384,47 @@ export default function ProductCard({
 
           </div>
 
-          {/* DETAILS BUTTON */}
+          {/* ================================================= */}
+          {/* ORDER BUTTON */}
+          {/* ================================================= */}
 
           <Link
             href={`/products/${product.id}`}
-            aria-label={`عرض ${product.name}`}
-            className="
+            aria-label={`اطلب الآن ${product.name}`}
+            className={`
               flex
-              h-9
-              w-9
+              h-10
+              w-full
               shrink-0
               items-center
               justify-center
-              rounded-full
-              bg-[#1f1f1f]
-              text-base
+              gap-2
+              rounded-xl
+              px-4
+              text-xs
+              font-bold
               text-white
               shadow-sm
               transition-all
               duration-300
-              hover:scale-105
-              hover:bg-[#a3834d]
-              hover:shadow-lg
               sm:h-11
-              sm:w-11
-              sm:text-lg
-            "
+              sm:rounded-xl
+              sm:px-5
+              sm:text-sm
+              ${
+                isOutOfStock
+                  ? "bg-black/40 hover:bg-black/60"
+                  : "bg-[#a3834d] hover:bg-[#a3834d] hover:shadow-lg"
+              }
+            `}
           >
-            →
+            <span className="text-base sm:text-lg">
+              🛒
+            </span>
+
+            <span>
+              اطلب الآن
+            </span>
           </Link>
 
         </div>

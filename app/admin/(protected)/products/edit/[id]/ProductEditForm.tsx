@@ -16,7 +16,8 @@ type Category = {
 type SizeType =
   | "NONE"
   | "LETTER"
-  | "NUMBER";
+  | "NUMBER"
+  | "COMBINED";
 
 type Variant = {
   id: string;
@@ -87,6 +88,20 @@ const NUMBER_SIZES = [
   "52",
   "54",
   "56",
+  "58",
+  "60",
+];
+
+const COMBINED_SIZES = [
+  "38/40/42-1",
+  "44/46/48-2",
+  "50/52/54-3",
+  "1",
+  "2",
+  "3",
+  "4",
+  "5",
+  "6",
 ];
 
 const ALLOWED_IMAGE_TYPES = [
@@ -162,17 +177,77 @@ export default function ProductEditForm({
   // SIZE TYPE
   // ====================================================
 
+  /*
+   * مهم:
+   *
+   * لا نعتمد فقط على product.variants[0].sizeType
+   *
+   * لأن المنتجات القديمة قد تحتوي على قياسات مركبة
+   * ولكن sizeType محفوظ بطريقة قديمة أو غير صحيحة.
+   *
+   * لذلك نتحقق أولاً:
+   *
+   * 1. هل يوجد COMBINED صراحة؟
+   *
+   * 2. هل القياس نفسه موجود داخل COMBINED_SIZES؟
+   *
+   * 3. هل القياس يحتوي "/" مثل:
+   *    38/40/42-1
+   *
+   * إذا وجدنا ذلك نفتح COMBINED تلقائياً.
+   */
+
   const initialSizeType: SizeType =
     product.variants.length > 0
-      ? product.variants[0].sizeType
+      ? (() => {
+          const hasExplicitCombined =
+            product.variants.some(
+              (variant) =>
+                variant.sizeType ===
+                "COMBINED",
+            );
+
+          if (hasExplicitCombined) {
+            return "COMBINED";
+          }
+
+          const hasCombinedSize =
+            product.variants.some(
+              (variant) =>
+                variant.size &&
+                (
+                  COMBINED_SIZES.includes(
+                    variant.size,
+                  ) ||
+                  variant.size.includes(
+                    "/",
+                  )
+                ),
+            );
+
+          if (hasCombinedSize) {
+            return "COMBINED";
+          }
+
+          return product.variants[0]
+            .sizeType;
+        })()
       : "NONE";
 
   const [sizeType, setSizeType] =
-    useState(initialSizeType);
+    useState<SizeType>(
+      initialSizeType,
+    );
 
   // ====================================================
   // SELECTED SIZES
   // ====================================================
+
+  /*
+   * نحتفظ بكل القياسات الموجودة فعلياً
+   * في المنتج حتى تظهر باللون الأخضر
+   * عند فتح صفحة التعديل.
+   */
 
   const initialSizes = useMemo(() => {
     return Array.from(
@@ -196,6 +271,27 @@ export default function ProductEditForm({
     useState<string[]>(
       initialSizes,
     );
+
+  // ====================================================
+  // SELECTED SIZES BY TYPE
+  // ====================================================
+
+  const [selectedSizesByType, setSelectedSizesByType] =
+    useState<Record<SizeType, string[]>>({
+      NONE: [],
+      LETTER:
+        initialSizeType === "LETTER"
+          ? initialSizes
+          : [],
+      NUMBER:
+        initialSizeType === "NUMBER"
+          ? initialSizes
+          : [],
+      COMBINED:
+        initialSizeType === "COMBINED"
+          ? initialSizes
+          : [],
+    });
 
   // ====================================================
   // COLORS
@@ -232,6 +328,13 @@ export default function ProductEditForm({
     );
 
   // ====================================================
+  // DELETED VARIANTS
+  // ====================================================
+
+  const [deletedVariantKeys, setDeletedVariantKeys] =
+    useState<string[]>([]);
+
+  // ====================================================
   // IMAGES
   // ====================================================
 
@@ -260,6 +363,7 @@ export default function ProductEditForm({
    *
    * newMainImageIndex = index
    */
+
   const [mainImageId, setMainImageId] =
     useState<string | null>(() => {
       const main =
@@ -314,9 +418,9 @@ export default function ProductEditForm({
   ) {
     setSizeType(type);
 
-    setSelectedSizes([]);
-
-    setVariants([]);
+    setSelectedSizes(
+      selectedSizesByType[type] ?? [],
+    );
 
     setError("");
   }
@@ -330,19 +434,25 @@ export default function ProductEditForm({
   ) {
     setSelectedSizes(
       (current) => {
-        if (
+        const updated =
           current.includes(size)
-        ) {
-          return current.filter(
-            (item) =>
-              item !== size,
-          );
-        }
+            ? current.filter(
+                (item) =>
+                  item !== size,
+              )
+            : [
+                ...current,
+                size,
+              ];
 
-        return [
-          ...current,
-          size,
-        ];
+        setSelectedSizesByType(
+          (allTypes) => ({
+            ...allTypes,
+            [sizeType]: updated,
+          }),
+        );
+
+        return updated;
       },
     );
 
@@ -416,13 +526,69 @@ export default function ProductEditForm({
       ),
     );
 
-    setVariants((current) =>
-      current.filter(
-        (variant) =>
-          variant.color !==
-          color,
-      ),
-    );
+    setVariants((current) => {
+      const removedVariants =
+        current.filter(
+          (variant) =>
+            variant.color !==
+            color,
+        );
+
+      current
+        .filter(
+          (variant) =>
+            variant.color ===
+            color,
+        )
+        .forEach(
+          (variant) => {
+            const key =
+              getVariantKey(
+                variant,
+              );
+
+            setDeletedVariantKeys(
+              (deleted) =>
+                deleted.includes(
+                  key,
+                )
+                  ? deleted
+                  : [
+                      ...deleted,
+                      key,
+                    ],
+            );
+          },
+        );
+
+      return removedVariants;
+    });
+  }
+
+  // ====================================================
+  // VARIANT KEY
+  // ====================================================
+
+  function getVariantKey(
+    variant: {
+      sizeType: SizeType;
+      size: string;
+      color: string;
+    },
+  ) {
+    const normalizedSizeType =
+      variant.sizeType ===
+      "COMBINED"
+        ? "NUMBER"
+        : variant.sizeType;
+
+    return [
+      normalizedSizeType,
+      variant.size.trim(),
+      variant.color
+        .trim()
+        .toLowerCase(),
+    ].join("|");
   }
 
   // ====================================================
@@ -452,37 +618,88 @@ export default function ProductEditForm({
       sizeType === "NONE"
     ) {
       const generated: Variant[] =
-        colors.map(
-          (color) => {
-            const existing =
-              variants.find(
-                (variant) =>
-                  variant.sizeType ===
-                    "NONE" &&
-                  variant.color ===
-                    color,
-              );
+        colors
+          .map(
+            (color) => {
+              const existing =
+                variants.find(
+                  (variant) =>
+                    variant.sizeType ===
+                      "NONE" &&
+                    variant.color
+                      .toLowerCase() ===
+                      color.toLowerCase(),
+                );
 
-            return {
-              id:
-                existing?.id ??
-                crypto.randomUUID(),
+              const newVariant = {
+                sizeType:
+                  "NONE" as const,
+                size: "",
+                color,
+              };
 
-              sizeType: "NONE",
+              const key =
+                getVariantKey(
+                  newVariant,
+                );
 
-              size: "",
+              if (
+                deletedVariantKeys.includes(
+                  key,
+                )
+              ) {
+                return null;
+              }
 
-              color,
+              return {
+                id:
+                  existing?.id ??
+                  crypto.randomUUID(),
 
-              stock:
-                existing?.stock ??
-                0,
-            };
-          },
-        );
+                sizeType:
+                  "NONE",
+
+                size: "",
+
+                color,
+
+                stock:
+                  existing?.stock ??
+                  0,
+              };
+            },
+          )
+          .filter(
+            (
+              variant,
+            ): variant is Variant =>
+              variant !== null,
+          );
 
       setVariants(
-        generated,
+        (current) => {
+          const currentKeys =
+            new Set(
+              current.map(
+                getVariantKey,
+              ),
+            );
+
+          const newVariants =
+            generated.filter(
+              (variant) =>
+                !currentKeys.has(
+                  getVariantKey(
+                    variant,
+                  ),
+                ),
+            );
+
+          return [
+            ...current,
+            ...newVariants,
+          ];
+        },
       );
 
       return;
@@ -516,15 +733,42 @@ export default function ProductEditForm({
       for (
         const color of colors
       ) {
+        const sizeTypeForKey =
+          sizeType ===
+          "COMBINED"
+            ? "NUMBER"
+            : sizeType;
+
+        const key = [
+          sizeTypeForKey,
+          size,
+          color
+            .trim()
+            .toLowerCase(),
+        ].join("|");
+
+        // ------------------------------------------
+        // DO NOT RESTORE DELETED VARIANT
+        // ------------------------------------------
+
+        if (
+          deletedVariantKeys.includes(
+            key,
+          )
+        ) {
+          continue;
+        }
+
+        // ------------------------------------------
+        // FIND EXISTING VARIANT
+        // ------------------------------------------
+
         const existing =
           variants.find(
             (variant) =>
-              variant.sizeType ===
-                sizeType &&
-              variant.size ===
-                size &&
-              variant.color ===
-                color,
+              getVariantKey(
+                variant,
+              ) === key,
           );
 
         generated.push({
@@ -545,8 +789,34 @@ export default function ProductEditForm({
       }
     }
 
+    // ----------------------------------------------
+    // MERGE — NEVER DELETE EXISTING VARIANTS
+    // ----------------------------------------------
+
     setVariants(
-      generated,
+      (current) => {
+        const currentKeys =
+          new Set(
+            current.map(
+              getVariantKey,
+            ),
+          );
+
+        const newVariants =
+          generated.filter(
+            (variant) =>
+              !currentKeys.has(
+                getVariantKey(
+                  variant,
+                ),
+              ),
+          );
+
+        return [
+          ...current,
+          ...newVariants,
+        ];
+      },
     );
   }
 
@@ -592,11 +862,37 @@ export default function ProductEditForm({
     id: string,
   ) {
     setVariants(
-      (current) =>
-        current.filter(
-          (variant) =>
-            variant.id !== id,
-        ),
+      (current) => {
+        const variant =
+          current.find(
+            (item) =>
+              item.id === id,
+          );
+
+        if (!variant) {
+          return current;
+        }
+
+        const key =
+          getVariantKey(
+            variant,
+          );
+
+        setDeletedVariantKeys(
+          (deleted) =>
+            deleted.includes(key)
+              ? deleted
+              : [
+                  ...deleted,
+                  key,
+                ],
+        );
+
+        return current.filter(
+          (item) =>
+            item.id !== id,
+        );
+      },
     );
   }
 
@@ -721,11 +1017,6 @@ export default function ProductEditForm({
       },
     );
 
-    /*
-     * إعادة ضبط الصورة الرئيسية
-     * إذا كانت الصورة المحذوفة
-     * هي الرئيسية.
-     */
     setNewMainImageIndex(
       (currentIndex) => {
         if (
@@ -779,10 +1070,6 @@ export default function ProductEditForm({
             ],
     );
 
-    /*
-     * إذا حذفنا الصورة الرئيسية
-     * نختار أول صورة متبقية.
-     */
     if (
       mainImageId ===
       imageId
@@ -1137,7 +1424,10 @@ export default function ProductEditForm({
         variants.map(
           (variant) => ({
             sizeType:
-              variant.sizeType,
+              variant.sizeType ===
+              "COMBINED"
+                ? "NUMBER"
+                : variant.sizeType,
 
             size:
               variant.sizeType ===
@@ -1199,10 +1489,6 @@ export default function ProductEditForm({
     // NEW MAIN IMAGE
     // ----------------------------------------------
 
-    /*
-     * newMainImageIndex يعتمد على
-     * ترتيب newImages الحالي.
-     */
     if (
       newMainImageIndex >= 0 &&
       newMainImageIndex <
@@ -1294,12 +1580,6 @@ export default function ProductEditForm({
         error,
       );
 
-      /*
-       * في Next.js redirect يتم التعامل معه
-       * داخليًا كـ NEXT_REDIRECT.
-       *
-       * لذلك لا نعرضه للمستخدم كخطأ.
-       */
       const errorDigest =
         (
           error as {
@@ -1579,7 +1859,7 @@ export default function ProductEditForm({
             نوع القياس
           </label>
 
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {(
               [
                 [
@@ -1596,6 +1876,11 @@ export default function ProductEditForm({
                   "NUMBER",
                   "قياسات أرقام",
                   "36 / 38 / 40 / 42",
+                ],
+                [
+                  "COMBINED",
+                  "قياسات مركبة",
+                  "38/40/42-1 / 44/46/48-2 / 1 / 2 / 3",
                 ],
               ] as const
             ).map(
@@ -1707,6 +1992,50 @@ export default function ProductEditForm({
                         isSubmitting
                       }
                       className={`min-w-16 rounded-xl border px-5 py-3 text-sm font-bold ${
+                        selected
+                          ? "border-emerald-600 bg-emerald-600 text-white"
+                          : "border-zinc-200 bg-white text-zinc-700 hover:border-emerald-400"
+                      }`}
+                    >
+                      {size}
+                    </button>
+                  );
+                },
+              )}
+            </div>
+          </div>
+        )}
+
+        {sizeType ===
+          "COMBINED" && (
+          <div className="mt-6">
+            <label className="mb-3 block text-sm font-bold text-zinc-800">
+              اختر القياسات المركبة
+            </label>
+
+            <div className="flex flex-wrap gap-3">
+              {COMBINED_SIZES.map(
+                (size) => {
+                  const selected =
+                    selectedSizes.includes(
+                      size,
+                    );
+
+                  return (
+                    <button
+                      key={
+                        size
+                      }
+                      type="button"
+                      onClick={() =>
+                        toggleSize(
+                          size,
+                        )
+                      }
+                      disabled={
+                        isSubmitting
+                      }
+                      className={`rounded-xl border px-5 py-3 text-sm font-bold ${
                         selected
                           ? "border-emerald-600 bg-emerald-600 text-white"
                           : "border-zinc-200 bg-white text-zinc-700 hover:border-emerald-400"
