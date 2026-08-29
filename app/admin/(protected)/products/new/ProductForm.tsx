@@ -94,6 +94,23 @@ const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 const MAX_IMAGES = 10;
 
 // ======================================================
+// ID GENERATOR
+// ======================================================
+
+function generateId() {
+  if (
+    typeof crypto !== "undefined" &&
+    typeof crypto.randomUUID === "function"
+  ) {
+    return crypto.randomUUID();
+  }
+
+  return `${Date.now()}-${Math.random()
+    .toString(36)
+    .substring(2, 15)}`;
+}
+
+// ======================================================
 // COMPONENT
 // ======================================================
 
@@ -294,7 +311,7 @@ export default function ProductForm({
     if (sizeType === "NONE") {
       const generated: Variant[] =
         colors.map((color) => ({
-          id: crypto.randomUUID(),
+          id: generateId(),
           sizeType: "NONE",
           size: "",
           color,
@@ -338,7 +355,7 @@ export default function ProductForm({
         generated.push({
           id:
             existing?.id ??
-            crypto.randomUUID(),
+            generateId(),
 
           sizeType,
 
@@ -470,7 +487,7 @@ export default function ProductForm({
 
     const newImages: SelectedImage[] =
       validFiles.map((file) => ({
-        id: crypto.randomUUID(),
+        id: generateId(),
 
         file,
 

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -95,7 +96,7 @@ export default function ProductGallery({
 
       {images.length > 1 && (
         <div className="mt-4 grid grid-cols-4 gap-3">
-          {images.slice(0, 4).map((image, index) => {
+          {images.map((image, index) => {
             const isSelected = selectedImage === index;
 
             return (
