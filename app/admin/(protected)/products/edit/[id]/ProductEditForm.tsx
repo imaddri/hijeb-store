@@ -112,7 +112,62 @@ const ALLOWED_IMAGE_TYPES = [
 ];
 
 const MAX_IMAGE_SIZE =
-  5 * 1024 * 1024;
+  2 * 1024 * 1024;
+
+async function compressImageFile(file: File) {
+  if (file.size <= MAX_IMAGE_SIZE) {
+    return file;
+  }
+
+  const reader = new FileReader();
+
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new Error("فشل قراءة الصورة"));
+    reader.readAsDataURL(file);
+  });
+
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new window.Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error("فشل تجهيز الصورة"));
+    image.src = dataUrl;
+  });
+
+  const maxDimension = 1600;
+  const scale = Math.min(1, maxDimension / Math.max(img.width, img.height));
+
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(img.width * scale));
+  canvas.height = Math.max(1, Math.round(img.height * scale));
+
+  const context = canvas.getContext("2d");
+
+  if (!context) {
+    return file;
+  }
+
+  context.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+  const blob = await new Promise<Blob | null>((resolve) => {
+    canvas.toBlob(
+      resolve,
+      file.type === "image/png" ? "image/jpeg" : file.type || "image/jpeg",
+      0.78,
+    );
+  });
+
+  if (!blob) {
+    return file;
+  }
+
+  const compressedName = file.name.replace(/\.[^/.]+$/, "") + ".jpg";
+
+  return new File([blob], compressedName, {
+    type: "image/jpeg",
+    lastModified: Date.now(),
+  });
+}
 
 // ======================================================
 // COMPONENT
@@ -925,7 +980,7 @@ export default function ProductEditForm({
   // ADD NEW IMAGES
   // ====================================================
 
-  function handleNewImagesChange(
+  async function handleNewImagesChange(
     event: React.ChangeEvent<HTMLInputElement>,
   ) {
     const files =
@@ -965,26 +1020,42 @@ export default function ProductEditForm({
       validFiles.push(file);
     }
 
-    const createdImages: NewImage[] =
-      validFiles.map(
-        (file) => ({
-          id: crypto.randomUUID(),
+    try {
+      const compressedFiles =
+        await Promise.all(
+          validFiles.map(
+            async (file) =>
+              compressImageFile(file),
+          ),
+        );
 
-          file,
+      const createdImages: NewImage[] =
+        compressedFiles.map(
+          (file) => ({
+            id: crypto.randomUUID(),
+            file,
+            preview:
+              URL.createObjectURL(
+                file,
+              ),
+          }),
+        );
 
-          preview:
-            URL.createObjectURL(
-              file,
-            ),
-        }),
+      setNewImages(
+        (current) => [
+          ...current,
+          ...createdImages,
+        ],
       );
-
-    setNewImages(
-      (current) => [
-        ...current,
-        ...createdImages,
-      ],
-    );
+    } catch (error) {
+      console.error(
+        "Image compression error:",
+        error,
+      );
+      showError(
+        "تعذر تجهيز بعض الصور. حاول رفع صور أصغر أو JPG/PNG بكثافة مناسبة.",
+      );
+    }
 
     event.target.value = "";
   }

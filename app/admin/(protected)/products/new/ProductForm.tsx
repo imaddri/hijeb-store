@@ -89,9 +89,64 @@ const ALLOWED_IMAGE_TYPES = [
   "image/avif",
 ];
 
-const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
+const MAX_IMAGE_SIZE = 2 * 1024 * 1024;
 
-const MAX_IMAGES = 10;
+const MAX_IMAGES = 12;
+
+async function compressImageFile(file: File) {
+  if (file.size <= MAX_IMAGE_SIZE) {
+    return file;
+  }
+
+  const reader = new FileReader();
+
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new Error("فشل قراءة الصورة"));
+    reader.readAsDataURL(file);
+  });
+
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new window.Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error("فشل تجهيز الصورة"));
+    image.src = dataUrl;
+  });
+
+  const maxDimension = 1600;
+  const scale = Math.min(1, maxDimension / Math.max(img.width, img.height));
+
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(img.width * scale));
+  canvas.height = Math.max(1, Math.round(img.height * scale));
+
+  const context = canvas.getContext("2d");
+
+  if (!context) {
+    return file;
+  }
+
+  context.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+  const blob = await new Promise<Blob | null>((resolve) => {
+    canvas.toBlob(
+      resolve,
+      file.type === "image/png" ? "image/jpeg" : file.type || "image/jpeg",
+      0.78,
+    );
+  });
+
+  if (!blob) {
+    return file;
+  }
+
+  const compressedName = file.name.replace(/\.[^/.]+$/, "") + ".jpg";
+
+  return new File([blob], compressedName, {
+    type: "image/jpeg",
+    lastModified: Date.now(),
+  });
+}
 
 // ======================================================
 // ID GENERATOR
@@ -417,7 +472,7 @@ export default function ProductForm({
   // IMAGE CHANGE
   // ====================================================
 
-  function handleImagesChange(
+  async function handleImagesChange(
     event: React.ChangeEvent<HTMLInputElement>,
   ) {
     const files = Array.from(
@@ -429,10 +484,6 @@ export default function ProductForm({
     }
 
     setError("");
-
-    // ----------------------------------------------
-    // MAX IMAGES
-    // ----------------------------------------------
 
     if (
       images.length + files.length >
@@ -449,10 +500,6 @@ export default function ProductForm({
 
     const validFiles: File[] = [];
 
-    // ----------------------------------------------
-    // VALIDATE FILES
-    // ----------------------------------------------
-
     for (const file of files) {
       if (
         !ALLOWED_IMAGE_TYPES.includes(
@@ -468,9 +515,9 @@ export default function ProductForm({
         return;
       }
 
-      if (file.size > MAX_IMAGE_SIZE) {
+      if (file.size > MAX_IMAGE_SIZE * 8) {
         showError(
-          `الصورة "${file.name}" تتجاوز 5 ميغابايت`,
+          `الصورة "${file.name}" كبيرة جدًا. الحد الآمن هو 2 ميغابايت لكل صورة لتجنب مشكلة Vercel عند رفع عدة صور.`,
         );
 
         event.target.value = "";
@@ -481,24 +528,36 @@ export default function ProductForm({
       validFiles.push(file);
     }
 
-    // ----------------------------------------------
-    // CREATE PREVIEWS
-    // ----------------------------------------------
+    try {
+      const compressedFiles =
+        await Promise.all(
+          validFiles.map(
+            async (file) =>
+              compressImageFile(file),
+          ),
+        );
 
-    const newImages: SelectedImage[] =
-      validFiles.map((file) => ({
-        id: generateId(),
+      const newImages: SelectedImage[] =
+        compressedFiles.map((file) => ({
+          id: generateId(),
+          file,
+          preview:
+            URL.createObjectURL(file),
+        }));
 
-        file,
-
-        preview:
-          URL.createObjectURL(file),
-      }));
-
-    setImages((current) => [
-      ...current,
-      ...newImages,
-    ]);
+      setImages((current) => [
+        ...current,
+        ...newImages,
+      ]);
+    } catch (error) {
+      console.error(
+        "Image compression error:",
+        error,
+      );
+      showError(
+        "تعذر تجهيز بعض الصور. حاول رفع صور أصغر أو صور JPG/PNG ذات جودة متوسطة.",
+      );
+    }
 
     event.target.value = "";
   }
